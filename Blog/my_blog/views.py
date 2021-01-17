@@ -1,7 +1,8 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.shortcuts import render, render_to_response
 
 from my_blog.models import Article, Comment
+from my_blog.forms import CommentForm
 
 
 # Create your views here.
@@ -10,21 +11,39 @@ def blog(request):
     # 需求1：查询所有博客信息，并返回给前端页面，展示
     blogs = Article.objects.all()
 
-    for blog in blogs:
-        # 查询，每篇文章下的所有评论
-        comments = blog.comment_set.all()
-
-    """这里的评论跟文章有对应关系，但是不知道如何跟前端交互"""
-    """有获取到评论数据，但是return之后，页面并未显示"""
-
-    return render_to_response('blog.html', {'blogs': blogs}, {'comments': comments})
+    return render_to_response('blog.html', {'blogs': blogs})
 
 
-def post_comment(request, id, comment):
-    # 需求2：用户提交评论，添加进入数据库
+"""
+之前想把评论在首页跟随博客显示，但是仔细思考过感觉不应该这样：
+如果一个文章评论太多，会直接把其他所有文章挤下去。
 
-    blog = Article.objects.get(id=id)  # 获取评论的对应博客
+所以，这里做了一个调整：首页不显示评论，点击文章进入详情时，显示评论，且可以发表评论。
+"""
 
-    comment = Comment.objects.create(comment=comment, article_id=blog.id)  # 向tb_comment表中添加信息
 
-    return HttpResponse('<h1>添加评论</h1>')
+def get_details(request, blog_id):
+    # 需求2：点击文章链接，进入文章详细信息；在这里展示评论列表和发表评论
+
+    try:
+        blog = Article.objects.get(id=blog_id)
+    except Article.DoesNotExist:
+        raise Http404
+
+    if request.method == 'GET':
+        # GET请求获取文章所有评论
+        form = CommentForm()
+    else:
+        # POST请求提交评论
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            Comment.objects.create(comment=data.get('comment'), article_id=blog_id)
+
+    comment_data = {
+        'blog': blog,
+        'comments': blog.comment_set.all(),
+        'form': form
+    }
+
+    return render(request, 'blog_details.html', comment_data)

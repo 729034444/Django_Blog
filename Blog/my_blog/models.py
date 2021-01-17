@@ -15,7 +15,7 @@ class Article(models.Model):
 # 这里还要单独创建一个评论表，评论跟文章是多对1关系
 class Comment(models.Model):
     """评论表"""
-    comment = models.TextField(verbose_name="评论")
+    comment = models.CharField('评论内容', max_length=240)
 
     article = models.ForeignKey(Article, on_delete=models.SET_NULL,
                                 null=True, verbose_name='文章')
@@ -23,3 +23,5 @@ class Comment(models.Model):
     class Meta:
         db_table = 'tb_comment'
         verbose_name = '评论'
+
+
